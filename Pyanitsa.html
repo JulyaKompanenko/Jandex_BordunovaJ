@@ -1,0 +1,301 @@
+<html>
+
+<head>
+
+<title></title>
+
+<script language="javascript">
+
+// масть роли не играет в этой игре
+function Card(weight,picture)
+{
+    this.weight  = weight;
+    this.picture = picture;
+}
+
+// игрок
+function Player(playername,cards)
+{
+    this.playername  = playername;
+    this.cards       = cards;
+    this.popcard     = function(){ if (this.cards.length == 0) return undefined; return this.cards.shift(); } 
+    this.pushcard    = function(card){this.cards.push(card);}
+}
+
+function PlayerStep(player,card)
+{
+    this.player = player; // игрок
+    this.card   = card  ; // карта которой сходил игрок
+    this.cover  = false ;
+}
+
+function Game(players)
+{
+    this.players = players;
+    this.playersteplistlist = new Array; // список подшагов внутри шага    
+    this.nextstep = function()
+    {
+        var cover = false;
+       
+        this.playersteplistlist.length = 0;
+        
+        // список участников текущего цикла
+        var playersteplist = new Array();
+        
+        // проходим по игрокам и заполняем начальный ход
+        for(var i=0;i<this.players.length;i++)
+        {
+            playersteplist.push(new PlayerStep(this.players[i],undefined));
+        }        
+        
+        // пока не нашли победителя 
+        while(playersteplist.length > 1)
+        {
+            
+            // каждый игрок выкладывает карту
+            for(var i=0;i<playersteplist.length;i++)
+            {
+                playersteplist[i].card = playersteplist[i].player.popcard();
+                playersteplist[i].cover = cover;    
+            }        
+    
+            // сохраняем playersteplist
+            this.playersteplistlist.push(playersteplist);        
+        
+            var newplayersteplist = new Array;
+                   
+            // проходим по текущему ходу
+            for(var i=0;i<playersteplist.length;i++)
+            {
+                // верхняя карта игрока
+                var card = playersteplist[i].card;
+                
+                // если у игрока нет карт
+                if(card == undefined) continue;
+                
+                if(newplayersteplist.length == 0)
+                {
+                    // сразу добавляем
+                    newplayersteplist.push(new PlayerStep(playersteplist[i].player,card));
+                }
+                else
+                {
+                    // если веса совпадают
+                    if((newplayersteplist[0].card.weight == card.weight)||cover)
+                    {
+                        newplayersteplist.push(new PlayerStep(playersteplist[i].player,card));
+                        continue;                    
+                    }
+                    
+                    // если у карты игрока вес больше чем у предыдущих, то их откидывам 
+                    if(newplayersteplist[0].card.weight < card.weight)
+                    {
+                        newplayersteplist.length = 0; // чистим массив
+                        newplayersteplist.push(new PlayerStep(playersteplist[i].player,card));
+                    }
+                }
+            }
+            if(cover){cover=false;}else{cover = (newplayersteplist.length>1);}
+            playersteplist = newplayersteplist;            
+        }
+        
+        // сохраняем победителя
+        this.playersteplistlist.push(playersteplist);        
+        
+        // добавление карт к победителю
+        // к этому моменту в playersteplist есть один игрок - победитель текущего шага (playersteplist[0].player) 
+        for(var i=0;i<this.playersteplistlist.length;i++)
+        {
+            for(var j=0;j<this.playersteplistlist[i].length;j++)
+            {
+                playersteplist[0].player.pushcard(this.playersteplistlist[i][j].card);
+            }
+        }
+    } 
+    
+}
+
+Players = new Array;
+
+function addplayer(playername)
+{
+   if(playername.length=0) return;
+   Players.push(new Player(playername,[]));
+
+   for (var i = 0; i < Players.length - 1; i++ )
+   {
+      if (playername == Players[i].playername)
+      {
+         Players.pop();
+         return;
+      }
+   }
+}
+
+function delplayer(playername)
+{
+   for (i = 0; i < Players.length; i = i + 1 )
+   {
+      if (playername == Players[i].playername)
+      {
+         Players.splice(i, 1);
+         return;
+      }
+   }
+}
+
+function startgame()
+{
+//    addplayer("1");
+//    addplayer("2");
+    Cards = new Array;
+    CreateCards();
+    shufflecards(Cards);
+    givingcards();
+    CurrentGame = new Game(Players);
+    
+    var startform = document.getElementById("start");
+    startform.parentNode.removeChild(startform);
+    
+    var mainform = document.getElementById("main");
+    mainform.removeAttribute("style"); 
+    
+    var nextbutton = document.getElementById("nextbtn"); 
+    
+    // добавить игроков
+    var table = mainform.insertBefore(document.createElement("table"),nextbutton);
+    table.border = 1;
+    
+    var tbody = table.appendChild(document.createElement("tbody"));
+    tbody.id = "tbodygame";    
+    
+    var tr = tbody.appendChild(document.createElement("tr"));
+    
+    var td = tr.appendChild(document.createElement("td"));
+    td.appendChild(document.createTextNode("Имя игрока:"));    
+       
+    for (var i=0;i<CurrentGame.players.length;i++)
+    {
+        var td = tr.appendChild(document.createElement("td"));
+        td.appendChild(document.createTextNode(CurrentGame.players[i].playername));        
+    }
+}
+
+function CreateCards()
+{
+   j = 0;
+   for (i = 0; i <= 52; i ++ )
+   {
+      if (j == 14) j = 1;
+      var C = new Card(j,i);
+      Cards.push(C);
+      j++;
+   }
+}
+
+
+function shufflecards(Cards)
+{
+   var r_i;
+   var v;
+   for (var i = 0; i < Cards.length - 1; i ++ )
+   {
+      r_i =  Math.floor(Math.random() * ((Cards.length - 1) - 1 + 1) + 1);
+      v = Cards[r_i];
+      Cards[r_i] = Cards[Cards.length - 1];
+      Cards[Cards.length - 1] = v;
+   }
+   return Cards;
+}
+
+function givingcards()
+{
+   for (i = 0; i < Players.length; i ++ )
+   {
+      step = Math.floor((Cards.length-1) / Players.length);
+      for (i = 0; i < Players.length; i ++ )
+      {
+         Players[i].cards = Cards.slice((step * i + 1), (step * (i + 1) + 1))
+      }
+   }
+}
+
+function nextmove()
+{
+    CurrentGame.nextstep();
+    
+    var tbody = document.getElementById("tbodygame");
+    
+    
+    // проход по подшагам
+    for(var i=0;i<CurrentGame.playersteplistlist.length;i++)
+    {
+        var tr = tbody.appendChild(document.createElement("tr"));    
+    
+        var td = tr.appendChild(document.createElement("td"));
+        
+        if(CurrentGame.playersteplistlist[i].length==1)
+        {
+            td.appendChild(document.createTextNode("Победитель шага: "+CurrentGame.playersteplistlist[i][0].player.playername));
+        }
+        else
+        {
+            td.appendChild(document.createTextNode("Шаг"));  
+        }
+          
+        // проход по игрокам
+        for(var p=0;p<CurrentGame.players.length;p++)
+        {
+            // ищем игрока в конкретном подшаге  
+            var playerstep = undefined;  
+            for (var j=0;j<CurrentGame.playersteplistlist[i].length;j++)
+            {
+                if(CurrentGame.players[p].playername==CurrentGame.playersteplistlist[i][j].player.playername)
+                {
+                    playerstep = CurrentGame.playersteplistlist[i][j];
+                    break;
+                }
+            }
+            
+            var td = tr.appendChild(document.createElement("td"));
+            if(playerstep)
+            {
+                var img = document.createElement("img");
+                if(playerstep.cover==1)
+                {
+                    img.src = "pic0.png";
+                }
+                else
+                {
+                    img.src = "pic"+playerstep.card.picture+".png";
+                }
+                td.appendChild(img);
+            }
+            else
+            {
+                td.appendChild(document.createTextNode("")); 
+            }
+        }
+    }
+    
+    var nextbutton =  document.getElementById("nextbtn");
+    nextbutton.scrollIntoView();
+}
+
+</script>
+</head>
+
+<body>
+<form id="start">
+<h2>Введите имена игроков</h2>
+<input type="text" id="name">
+<a href="#" onclick="addplayer(start.name.value);">добавить</a>
+<a href="#" onclick="delplayer(start.name.value);">удалить </a>
+<input type="button" value="Начать игру" onClick ="startgame()">
+</form>
+<form id="main" style="display:none">
+<input id="nextbtn" type="button" value="Следующий ход" onClick = "nextmove()">
+</form>
+</body>
+
+</html>
